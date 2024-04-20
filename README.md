@@ -1,7 +1,8 @@
-# Welcome to streamlit
+# OS Process Scheduling Simulator
 
-This is the app you get when you run `streamlit hello`, extracted as its own app.
+This is an application that simulates process scheduling algorithms used in various operating systems.
 
-Edit [Hello.py](./Hello.py) to customize this app to your heart's desire. ❤️
-
-Check it out on [Streamlit Community Cloud](https://st-hello-app.streamlit.app/)
+Currently supported algorithms:
+- FCFS (First Come First Serve)
+- SJF (Shortest Job First)
+- SRTF (Shortest Remaining Time First)
