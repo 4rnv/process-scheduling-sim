@@ -8,11 +8,11 @@ LOGGER = get_logger(__name__)
 def run():
     st.set_page_config(
         page_title="Process Scheduling Simulator",
-        page_icon="🆘",
+        page_icon="🌸",
         initial_sidebar_state="collapsed",
         menu_items={
         'Report a bug': "https://github.com/4rnv/process-scheduling-sim/issues",
-        'About': "Nothing really."
+        'About': "Project by : Arnav Dandekar, Samarth Bhandavale, Pushkar Uikey, Siddhesh Goenka",
         }
     )
     st.markdown(
@@ -27,10 +27,11 @@ def run():
     )
     
     st.write("# Process Scheduling Simulator")
-    st.subheader("😴😴😴")
+    st.subheader("Operating Systems")
     st.markdown(
         """
-        Enter the arrival and burst times of your processes
+        Enter the arrival and burst times of your processes. This program will calculate the execution times for each process.
+        You can also download the Gantt chart and table after generation.
     """
     )
     with st.form("Formdesu"):
@@ -39,24 +40,27 @@ def run():
       burst_times = st.text_input(label="Enter burst times separated by a single space (no commas)", placeholder="2 4 6 8 10")
       state = st.form_submit_button("Solve", type="primary")
       if state:
-            arrival_times_list = list(map(int, arrival_times.split()))
-            burst_times_list = list(map(int, burst_times.split()))
-            labels = [f'Process {i+1}' for i in range(len(arrival_times_list))]
-            if len(arrival_times_list) != len(burst_times_list):
-                st.warning("Amount of the arrival times and burst times do not match")
-            else:
-                if scheduler_type == "FCFS (First Come First Serve)":
-                    start_times, completion_times, wait_times, turnaround_times = fcfs(arrival_times_list, burst_times_list)
-                elif scheduler_type == "SJF (Shortest Job First)":
-                    start_times, completion_times, wait_times, turnaround_times = sjf(arrival_times_list, burst_times_list)
-                elif scheduler_type == "SRTF (Shortest Remaining Time First)":
-                    start_times, completion_times, wait_times, turnaround_times = srtf(arrival_times_list, burst_times_list)
-                create_table(start_times, completion_times, wait_times, turnaround_times, labels)
-                plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
-                avg_tat = float(sum(turnaround_times))/len(turnaround_times)
-                avg_wt = float(sum(wait_times))/len(wait_times)
-                st.write("Average Turn Around Time is {avg_tat} units".format(avg_tat = avg_tat))
-                st.write("Average Waiting Time is {avg_wt} units".format(avg_wt = avg_wt))
+            try:
+                arrival_times_list = list(map(int, arrival_times.split()))
+                burst_times_list = list(map(int, burst_times.split()))
+                labels = [f'Process {i+1}' for i in range(len(arrival_times_list))]
+                if len(arrival_times_list) != len(burst_times_list):
+                    st.warning("Amount of the arrival times and burst times do not match")
+                else:
+                    if scheduler_type == "FCFS (First Come First Serve)":
+                        start_times, completion_times, wait_times, turnaround_times = fcfs(arrival_times_list, burst_times_list)
+                    elif scheduler_type == "SJF (Shortest Job First)":
+                        start_times, completion_times, wait_times, turnaround_times = sjf(arrival_times_list, burst_times_list)
+                    elif scheduler_type == "SRTF (Shortest Remaining Time First)":
+                        start_times, completion_times, wait_times, turnaround_times = srtf(arrival_times_list, burst_times_list)
+                    create_table(start_times, completion_times, wait_times, turnaround_times, labels)
+                    plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
+                    avg_tat = float(sum(turnaround_times))/len(turnaround_times)
+                    avg_wt = float(sum(wait_times))/len(wait_times)
+                    st.write("Average Turn Around Time is {avg_tat} units".format(avg_tat = avg_tat))
+                    st.write("Average Waiting Time is {avg_wt} units".format(avg_wt = avg_wt))
+            except ValueError:
+                st.error("Only integers are allowed", icon="🙄")
 
 
 def fcfs(arrival_times, burst_times):
@@ -178,5 +182,6 @@ def create_table(start_times, completion_times, wait_times, turnaround_times, la
         "Wait Time" : wait_times,
     })
     st.dataframe(table_df, use_container_width=True, hide_index=True)
+
 if __name__ == "__main__":
     run()
