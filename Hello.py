@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from streamlit.logger import get_logger
-import copy
 
 LOGGER = get_logger(__name__)
 
@@ -36,20 +35,34 @@ def run():
     """
     )
 
+    scheduler_type = st.selectbox(
+        'Select an algorithm',
+        ('FCFS (First Come First Serve)', 'SJF (Shortest Job First)', 
+         'SRTF (Shortest Remaining Time First)', 'RR (Round Robin)')
+    )
+
     with st.form("OHSHC"):
-      scheduler_type = st.selectbox('Select an algorithm',('FCFS (First Come First Serve)', 'SJF (Shortest Job First)', 'SRTF (Shortest Remaining Time First)', 'RR (Round Robin)'))
-      arrival_times = st.text_input(label="Enter arrival times separated by a single space (no commas)", placeholder="2 4 6 8 10")
-      burst_times = st.text_input(label="Enter burst times separated by a single space (no commas)", placeholder="2 4 6 8 10")
+      arrival_times = st.text_input(
+            label="Enter arrival times separated by a single space (no commas)", 
+            placeholder="2 4 6 8 10"
+        )
+      burst_times = st.text_input(
+            label="Enter burst times separated by a single space (no commas)", 
+            placeholder="2 4 6 8 10"
+        )
       if scheduler_type == "RR (Round Robin)":
-          quantum_time = st.text_input(label="Enter Quantum Time ",value=0)
+            quantum_time = st.text_input(label="Enter Quantum", placeholder="0")
+            if quantum_time:
+                quantum_time = int(quantum_time)
       state = st.form_submit_button("Solve", type="primary")
       if state:
+        st.write("Scheduler Type:", scheduler_type)
+        if scheduler_type == "RR (Round Robin)":
+            st.write("Quantum Time:", quantum_time)
         if len(arrival_times) != 0 and len(burst_times) != 0:
             try:
                 arrival_times_list = list(map(int, arrival_times.split()))
                 burst_times_list = list(map(int, burst_times.split()))
-                if scheduler_type == "RR (Round Robin)":
-                    quantum_time = int(quantum_time)
                 labels = [f'Process {i+1}' for i in range(len(arrival_times_list))]
                 if len(arrival_times_list) != len(burst_times_list):
                     st.warning("Amount of the arrival times and burst times do not match")
@@ -61,7 +74,7 @@ def run():
                     elif scheduler_type == "SRTF (Shortest Remaining Time First)":
                         start_times, completion_times, wait_times, turnaround_times = srtf(arrival_times_list, burst_times_list)
                     elif scheduler_type == "RR (Round Robin)":
-                        start_times, completion_times, wait_times, turnaround_times = rr(arrival_times_list, burst_times_list,quantum_time)
+                        start_times, completion_times, wait_times, turnaround_times = rr(arrival_times_list, burst_times_list, quantum_time)
                     create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels)
                     plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
                     avg_tat = float(sum(turnaround_times))/len(turnaround_times)
@@ -163,62 +176,71 @@ def srtf(arrival_times, burst_times):
 
     return start_times, completion_times, wait_times, turnaround_times
 
-def not_all_bt_zero(bt_zero):
-    for bt in bt_zero.values():
-        if bt != 0:
-            return True
-    return False
+def rr(arrival_times, burst_times, quantum):
+    # Zip the arrival and burst times, sort by arrival time, and unzip
+    if quantum <=0:
+        st.error("Time cannot be negative or zero", icon="💅")
+    zipped_times = sorted(zip(arrival_times, burst_times), key=lambda x: x[0])
+    sorted_arrival_times, sorted_burst_times = zip(*zipped_times)
+    sorted_arrival_times = list(sorted_arrival_times)
+    sorted_burst_times = list(sorted_burst_times)
+    
+    n = len(sorted_arrival_times)
+    remaining_burst_times = list(sorted_burst_times)
+    completion_times = [0] * n
+    wait_times = [0] * n
+    turnaround_times = [0] * n
+    start_times = [-1] * n
 
+    t = 0
+    queue = []
+    process_index = 0
 
-def rr(arrival_times, burst_times, qt):
-    start_times = arrival_times
-    completion_times = burst_times
-    processes = {i: [start_times[i], completion_times[i]] for i in range(len(start_times))}
-    ct = {}
-    tat = {}
-    wt = {}
-    ready_queue = []
-    gantt = []
-    start = 0
-    bt_zero = {i: processes[i][1] for i in processes}
-    processes_temp = copy.deepcopy(processes)
-    pending = []
-    while not_all_bt_zero(bt_zero):
-        for x in processes:
-            if processes[x][0] <= start and x not in pending and processes[x][1] != 0:
-                ready_queue.append(x)
-        ready_queue = ready_queue + pending
-        rq_temp = ready_queue.copy()
-        for y in rq_temp:
-            if processes[y][1] > qt:
-                gantt.append([y, (start, start + qt)])
-                processes[y][1] = processes[y][1] - qt
-                bt_zero[y] = bt_zero[y] - qt
-                start = start + qt
-                if y in pending:
-                    pending.remove(y)
-                pending.append(y)
-                ready_queue.pop(0)
+    while True:
+        # Add processes to the queue as they arrive
+        while process_index < n and sorted_arrival_times[process_index] <= t:
+            queue.append(process_index)
+            process_index += 1
+
+        # If queue is empty and there are processes yet to arrive, jump time forward
+        if not queue and process_index < n:
+            t = sorted_arrival_times[process_index]
+            queue.append(process_index)
+            process_index += 1
+
+        # Process the queue
+        if queue:
+            current_process = queue.pop(0)
+            if start_times[current_process] == -1:
+                start_times[current_process] = t
+
+            if remaining_burst_times[current_process] > quantum:
+                t += quantum
+                remaining_burst_times[current_process] -= quantum
+                while process_index < n and sorted_arrival_times[process_index] <= t:
+                    queue.append(process_index)
+                    process_index += 1
+                queue.append(current_process)
             else:
-                gantt.append([y, (start, start + processes[y][1])])
-                start = start + processes[y][1]
-                bt_zero[y] = 0
-                processes[y][1] = 0
-                if y in pending:
-                    pending.remove(y)
-                ready_queue.pop(0)
-    for i in gantt[::-1]:
-        if i[0] not in ct:
-            ct[i[0]] = i[1][1]
+                t += remaining_burst_times[current_process]
+                completion_times[current_process] = t
+                remaining_burst_times[current_process] = 0
 
-    for i in processes_temp:
-        tat[i] = ct[i] - processes_temp[i][0]
-    for i in processes_temp:
-        wt[i] = tat[i] - processes_temp[i][1]
+        # Check if all processes are done
+        all_done = True
+        for remaining in remaining_burst_times:
+            if remaining != 0:
+                all_done = False
+                break
+        if all_done:
+            break
 
-    turnaround_times = [tat[i] for i in tat]
-    wait_times = [wt[i] for i in wt]
-    return start_times, completion_times, turnaround_times, wait_times
+    # Calculate wait and turnaround times
+    for i in range(n):
+        turnaround_times[i] = completion_times[i] - sorted_arrival_times[i]
+        wait_times[i] = turnaround_times[i] - sorted_burst_times[i]
+
+    return start_times, completion_times, wait_times, turnaround_times
 
 def plot_gantt_chart(scheduler_type, start_times, burst_times, labels):
     # Create a DataFrame for the Gantt chart
