@@ -34,12 +34,13 @@ def run():
         You can also download the Gantt chart and table after generation.
     """
     )
-    with st.form("Formdesu"):
+    with st.form("OHSHC"):
       scheduler_type = st.selectbox('Select an algorithm',('FCFS (First Come First Serve)', 'SJF (Shortest Job First)', 'SRTF (Shortest Remaining Time First)'))
       arrival_times = st.text_input(label="Enter arrival times separated by a single space (no commas)", placeholder="2 4 6 8 10")
       burst_times = st.text_input(label="Enter burst times separated by a single space (no commas)", placeholder="2 4 6 8 10")
       state = st.form_submit_button("Solve", type="primary")
       if state:
+        if len(arrival_times) != 0 and len(burst_times) != 0:
             try:
                 arrival_times_list = list(map(int, arrival_times.split()))
                 burst_times_list = list(map(int, burst_times.split()))
@@ -53,7 +54,7 @@ def run():
                         start_times, completion_times, wait_times, turnaround_times = sjf(arrival_times_list, burst_times_list)
                     elif scheduler_type == "SRTF (Shortest Remaining Time First)":
                         start_times, completion_times, wait_times, turnaround_times = srtf(arrival_times_list, burst_times_list)
-                    create_table(start_times, completion_times, wait_times, turnaround_times, labels)
+                    create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels)
                     plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
                     avg_tat = float(sum(turnaround_times))/len(turnaround_times)
                     avg_wt = float(sum(wait_times))/len(wait_times)
@@ -61,6 +62,8 @@ def run():
                     st.write("Average Waiting Time is {avg_wt} units".format(avg_wt = avg_wt))
             except ValueError:
                 st.error("Only integers are allowed", icon="🙄")
+        else:
+            st.warning("Your input is empty")
 
 
 def fcfs(arrival_times, burst_times):
@@ -173,10 +176,11 @@ def plot_gantt_chart(scheduler_type, start_times, burst_times, labels):
 
     st.altair_chart(chart, use_container_width=True)
 
-def create_table(start_times, completion_times, wait_times, turnaround_times, labels):
+def create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels):
     table_df = pd.DataFrame({
         "Process Name" : labels,
         "Start" : start_times,
+        "I/O Time" : burst_times_list,
         "Completion Time" : completion_times,
         "Turn Around Time" : turnaround_times,
         "Wait Time" : wait_times,
