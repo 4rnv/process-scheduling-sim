@@ -75,7 +75,7 @@ def run():
                     elif scheduler_type == "SRTF (Shortest Remaining Time First)":
                         start_times, completion_times, wait_times, turnaround_times = srtf(arrival_times_list, burst_times_list)
                     elif scheduler_type == "RR (Round Robin)":
-                        start_times, completion_times, wait_times, turnaround_times = rr(arrival_times_list, burst_times_list, quantum_time)
+                        start_times, completion_times, wait_times, turnaround_times = rr(data, quantum_time)
                     create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels)
                     plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
                     avg_tat = float(sum(turnaround_times))/len(turnaround_times)
@@ -183,66 +183,55 @@ def srtf(arrival_times, burst_times):
 
     return start_times, completion_times, wait_times, turnaround_times
 
-def rr(arrival_times, burst_times, quantum):
+def rr(data, quantum):
     if quantum <=0:
         st.error("Time cannot be negative or zero", icon="💅")
-    zipped_times = sorted(zip(arrival_times, burst_times), key=lambda x: x[0])
-    sorted_arrival_times, sorted_burst_times = zip(*zipped_times)
-    sorted_arrival_times = list(sorted_arrival_times)
-    sorted_burst_times = list(sorted_burst_times)
-    
-    n = len(sorted_arrival_times)
-    remaining_burst_times = list(sorted_burst_times)
+    data.sort(key=lambda x: x[1])
+    n = len(data)
+    remaining_burst_times = [x[2] for x in data]  # Initial burst times
+    arrival_times = [x[1] for x in data]
+    start_times = [-1] * n  # To record the first time a process is picked up
     completion_times = [0] * n
-    wait_times = [0] * n
-    turnaround_times = [0] * n
-    start_times = [-1] * n
-
     t = 0
     queue = []
     process_index = 0
 
     while True:
         # Add processes to the queue as they arrive
-        while process_index < n and sorted_arrival_times[process_index] <= t:
-            queue.append(process_index)
+        while process_index < n and arrival_times[process_index] <= t:
+            if process_index not in queue:
+                queue.append(process_index)
             process_index += 1
 
-        if not queue and process_index < n:
-            t = sorted_arrival_times[process_index]
-            queue.append(process_index)
-            process_index += 1
-
+        if not queue:
+            if process_index < n:
+                t = arrival_times[process_index]
+            else:
+                break
         if queue:
             current_process = queue.pop(0)
-            if start_times[current_process] == -1:
+            if start_times[current_process] == -1:  # Set the start time the first time this process runs
                 start_times[current_process] = t
+            
+            service_time = min(quantum, remaining_burst_times[current_process])
+            remaining_burst_times[current_process] -= service_time
+            t += service_time
 
-            if remaining_burst_times[current_process] > quantum:
-                t += quantum
-                remaining_burst_times[current_process] -= quantum
-                while process_index < n and sorted_arrival_times[process_index] <= t:
-                    queue.append(process_index)
+            if remaining_burst_times[current_process] == 0:
+                completion_times[current_process] = t
+            else:
+                # If not finished, re-add to the queue if other processes have arrived
+                while process_index < n and arrival_times[process_index] <= t:
+                    if process_index not in queue:
+                        queue.append(process_index)
                     process_index += 1
                 queue.append(current_process)
-            else:
-                t += remaining_burst_times[current_process]
-                completion_times[current_process] = t
-                remaining_burst_times[current_process] = 0
 
-        # Check if all processes are done
-        all_done = True
-        for remaining in remaining_burst_times:
-            if remaining != 0:
-                all_done = False
-                break
-        if all_done:
-            break
-
-    # Calculate wait and turnaround times
+    wait_times = [0] * n
+    turnaround_times = [0] * n
     for i in range(n):
-        turnaround_times[i] = completion_times[i] - sorted_arrival_times[i]
-        wait_times[i] = turnaround_times[i] - sorted_burst_times[i]
+        turnaround_times[i] = completion_times[i] - arrival_times[i]
+        wait_times[i] = turnaround_times[i] - data[i][2]
 
     return start_times, completion_times, wait_times, turnaround_times
 
