@@ -52,8 +52,6 @@ def run():
         )
       if scheduler_type == "RR (Round Robin)":
             quantum_time = st.text_input(label="Enter Quantum", placeholder="0")
-            if quantum_time:
-                quantum_time = int(quantum_time)
       state = st.form_submit_button("Solve", type="primary")
       if state:
         st.write("Scheduler Type:", scheduler_type)
@@ -61,6 +59,7 @@ def run():
             st.write("Quantum Time:", quantum_time)
         if len(arrival_times) != 0 and len(burst_times) != 0:
             try:
+                flag = 1
                 arrival_times_list = list(map(int, arrival_times.split()))
                 burst_times_list = list(map(int, burst_times.split()))
                 labels = [f'Process {i+1}' for i in range(len(arrival_times_list))]
@@ -75,13 +74,20 @@ def run():
                     elif scheduler_type == "SRTF (Shortest Remaining Time First)":
                         start_times, completion_times, wait_times, turnaround_times = srtf(arrival_times_list, burst_times_list)
                     elif scheduler_type == "RR (Round Robin)":
-                        start_times, completion_times, wait_times, turnaround_times = rr(data, quantum_time)
-                    create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels)
-                    plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
-                    avg_tat = float(sum(turnaround_times))/len(turnaround_times)
-                    avg_wt = float(sum(wait_times))/len(wait_times)
-                    st.write("Average Turn Around Time is {avg_tat} units".format(avg_tat = avg_tat))
-                    st.write("Average Waiting Time is {avg_wt} units".format(avg_wt = avg_wt))
+                        if quantum_time:
+                            try:
+                                quantum_time = int(quantum_time)
+                                start_times, completion_times, wait_times, turnaround_times = rr(data, quantum_time)
+                            except:
+                                st.error("Quantum time can only be an integer number")
+                                flag = 0
+                    if flag == 1:
+                        create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels)
+                        plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
+                        avg_tat = float(sum(turnaround_times))/len(turnaround_times)
+                        avg_wt = float(sum(wait_times))/len(wait_times)
+                        st.write("Average Turn Around Time is {avg_tat} units".format(avg_tat = avg_tat))
+                        st.write("Average Waiting Time is {avg_wt} units".format(avg_wt = avg_wt))
             except ValueError:
                 st.error("Only integers are allowed", icon="🙄")
         else:
