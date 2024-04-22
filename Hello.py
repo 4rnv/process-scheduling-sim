@@ -64,11 +64,12 @@ def run():
                 arrival_times_list = list(map(int, arrival_times.split()))
                 burst_times_list = list(map(int, burst_times.split()))
                 labels = [f'Process {i+1}' for i in range(len(arrival_times_list))]
+                data = list(zip(labels, arrival_times_list, burst_times_list))
                 if len(arrival_times_list) != len(burst_times_list):
                     st.warning("Amount of the arrival times and burst times do not match")
                 else:
                     if scheduler_type == "FCFS (First Come First Serve)":
-                        start_times, completion_times, wait_times, turnaround_times = fcfs(arrival_times_list, burst_times_list)
+                        start_times, completion_times, wait_times, turnaround_times = shinfcfs(data)
                     elif scheduler_type == "SJF (Shortest Job First)":
                         start_times, completion_times, wait_times, turnaround_times = sjf(arrival_times_list, burst_times_list)
                     elif scheduler_type == "SRTF (Shortest Remaining Time First)":
@@ -86,21 +87,28 @@ def run():
         else:
             st.warning("Your input is empty")
 
+def shinfcfs(data):
+    data.sort(key=lambda x: x[1])
+    start_times = []
+    completion_times = []
+    wait_times = []
+    turnaround_times = []
+    last_completion_time = 0
 
-def fcfs(arrival_times, burst_times):
-    start_times = [0] * len(arrival_times)
-    completion_times = [0] * len(arrival_times)
-    wait_times = [0] * len(arrival_times)
-    turnaround_times = [0] * len(arrival_times)
-
-    for i in range(len(arrival_times)):
-        if i == 0:
-            start_times[i] = arrival_times[i]
+    for i in range(len(data)):
+        process_name, arrival_time, burst_time = data[i]
+        if last_completion_time < arrival_time:
+            start_time = arrival_time
         else:
-            start_times[i] = max(completion_times[i-1], arrival_times[i])
-        completion_times[i] = start_times[i] + burst_times[i]
-        turnaround_times[i] = completion_times[i] - arrival_times[i]
-        wait_times[i] = turnaround_times[i] - burst_times[i]
+            start_time = last_completion_time
+        start_times.append(start_time)
+        completion_time = start_time + burst_time
+        completion_times.append(completion_time)
+        last_completion_time = completion_time
+        turnaround_time = completion_time - arrival_time
+        turnaround_times.append(turnaround_time)
+        wait_time = start_time - arrival_time
+        wait_times.append(wait_time)
 
     return start_times, completion_times, wait_times, turnaround_times
 
@@ -169,7 +177,6 @@ def srtf(arrival_times, burst_times):
             last_idx = idx
         current_time += 1
 
-    # Adjust start times for those that were preempted
     for i in range(n):
         if start_times[i] == -1:
             start_times[i] = arrival_times[i]
@@ -177,7 +184,6 @@ def srtf(arrival_times, burst_times):
     return start_times, completion_times, wait_times, turnaround_times
 
 def rr(arrival_times, burst_times, quantum):
-    # Zip the arrival and burst times, sort by arrival time, and unzip
     if quantum <=0:
         st.error("Time cannot be negative or zero", icon="💅")
     zipped_times = sorted(zip(arrival_times, burst_times), key=lambda x: x[0])
@@ -202,13 +208,11 @@ def rr(arrival_times, burst_times, quantum):
             queue.append(process_index)
             process_index += 1
 
-        # If queue is empty and there are processes yet to arrive, jump time forward
         if not queue and process_index < n:
             t = sorted_arrival_times[process_index]
             queue.append(process_index)
             process_index += 1
 
-        # Process the queue
         if queue:
             current_process = queue.pop(0)
             if start_times[current_process] == -1:
