@@ -82,8 +82,8 @@ def run():
                                 st.error("Quantum time can only be an integer number")
                                 flag = 0
                     if flag == 1:
-                        create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels)
-                        plot_gantt_chart(scheduler_type, start_times, burst_times_list, labels)
+                        create_table(start_times, completion_times, wait_times, turnaround_times, data)
+                        plot_gantt_chart(scheduler_type, start_times, data)
                         avg_tat = float(sum(turnaround_times))/len(turnaround_times)
                         avg_wt = float(sum(wait_times))/len(wait_times)
                         st.write("Average Turn Around Time is {avg_tat} units".format(avg_tat = avg_tat))
@@ -203,7 +203,6 @@ def rr(data, quantum):
     process_index = 0
 
     while True:
-        # Add processes to the queue as they arrive
         while process_index < n and arrival_times[process_index] <= t:
             if process_index not in queue:
                 queue.append(process_index)
@@ -216,7 +215,7 @@ def rr(data, quantum):
                 break
         if queue:
             current_process = queue.pop(0)
-            if start_times[current_process] == -1:  # Set the start time the first time this process runs
+            if start_times[current_process] == -1:
                 start_times[current_process] = t
             
             service_time = min(quantum, remaining_burst_times[current_process])
@@ -226,7 +225,6 @@ def rr(data, quantum):
             if remaining_burst_times[current_process] == 0:
                 completion_times[current_process] = t
             else:
-                # If not finished, re-add to the queue if other processes have arrived
                 while process_index < n and arrival_times[process_index] <= t:
                     if process_index not in queue:
                         queue.append(process_index)
@@ -241,8 +239,9 @@ def rr(data, quantum):
 
     return start_times, completion_times, wait_times, turnaround_times
 
-def plot_gantt_chart(scheduler_type, start_times, burst_times, labels):
-    # Create a DataFrame for the Gantt chart
+def plot_gantt_chart(scheduler_type, start_times, data):
+    burst_times = [x[2] for x in data]
+    labels = [x[0] for x in data]
     df = pd.DataFrame({
         'Task': labels,
         'Start': start_times,
@@ -262,12 +261,16 @@ def plot_gantt_chart(scheduler_type, start_times, burst_times, labels):
 
     st.altair_chart(chart, use_container_width=True)
 
-def create_table(start_times, completion_times, wait_times, turnaround_times, burst_times_list, labels):
+def create_table(start_times, completion_times, wait_times, turnaround_times, data):
+    labels = [x[0] for x in data]
+    arrival_times_list = [x[1] for x in data]
+    burst_times_list = [x[2] for x in data]
     table_df = pd.DataFrame({
         "Process Name" : labels,
-        "Start" : start_times,
+        "Arrival Times" : arrival_times_list,
         "I/O Time" : burst_times_list,
-        "Completion Time" : completion_times,
+        "Start" : start_times,
+        "Finish Time" : completion_times,
         "Turn Around Time" : turnaround_times,
         "Wait Time" : wait_times,
     })
