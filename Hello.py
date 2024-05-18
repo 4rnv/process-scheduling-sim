@@ -38,7 +38,8 @@ def run():
     scheduler_type = st.selectbox(
         'Select an algorithm',
         ('FCFS (First Come First Serve)', 'SJF (Shortest Job First)', 
-         'SRTF (Shortest Remaining Time First)', 'RR (Round Robin)')
+         'SRTF (Shortest Remaining Time First)', 'RR (Round Robin)',
+         'Priority (Non -Preemptive)')
     )
 
     with st.form("OHSHC"):
@@ -52,6 +53,8 @@ def run():
         )
       if scheduler_type == "RR (Round Robin)":
             quantum_time = st.text_input(label="Enter Quantum", placeholder="0")
+      if scheduler_type == "Priority (Non -Preemptive)":
+            priority_order = st.text_input(label="Enter Priority", placeholder="High Value High Priority")
       state = st.form_submit_button("Solve", type="primary")
       if state:
         st.write("Scheduler Type:", scheduler_type)
@@ -64,6 +67,8 @@ def run():
                 burst_times_list = list(map(int, burst_times.split()))
                 labels = [f'Process {i+1}' for i in range(len(arrival_times_list))]
                 data = list(zip(labels, arrival_times_list, burst_times_list))
+                if scheduler_type == "Priority (Non -Preemptive)":
+                    priority_order_list = list(map(int, priority_order.split()))
                 if len(arrival_times_list) != len(burst_times_list):
                     st.warning("Amount of the arrival times and burst times do not match")
                 else:
@@ -80,6 +85,13 @@ def run():
                                 start_times, completion_times, wait_times, turnaround_times = rr(data, quantum_time)
                             except:
                                 st.error("Quantum time can only be an integer number")
+                                flag = 0
+                    elif scheduler_type == "Priority (Non -Preemptive)":
+                        if priority_order_list:
+                            try:
+                                data,start_times, completion_times, wait_times, turnaround_times = priority(arrival_times_list,burst_times_list,priority_order_list)
+                            except:
+                                st.error("Invalid Input")
                                 flag = 0
                     if flag == 1:
                         create_table(start_times, completion_times, wait_times, turnaround_times, data)
@@ -238,6 +250,28 @@ def rr(data, quantum):
         wait_times[i] = turnaround_times[i] - data[i][2]
 
     return start_times, completion_times, wait_times, turnaround_times
+
+def priority(arrival_time, burst_time, p):
+    p_id = [i + 1 for i in range(len(arrival_time))]
+    process = {p_id[i]: [arrival_time[i], burst_time[i], p[i]] for i in range(len(arrival_time))}
+    process = dict(sorted(process.items(), key=lambda item: item[1][2], reverse=True))
+    start = 0
+    gantt = {}
+    for i in range(len(process)):
+        for j in process:
+            if process[j][0] <= start and j not in gantt:
+                gantt[j] = [start,start+process[j][1]]
+                start = start+process[j][1]
+                break
+    start_times = [gantt[i][0] for i in gantt]
+    completion_times = [gantt[i][1] for i in gantt]
+    arrival_times = [process[i][0] for i in process]
+    burst_times = [process[i][1] for i in process]
+    p_id = [i for i in process]
+    turnaround_times = [completion_times[i] - arrival_times[i] for i in range(len(process))]
+    wait_times = [turnaround_times[i] - burst_times[i] for i in range(len(process))]
+    data = list(zip(p_id, arrival_times, burst_times))
+    return data,start_times, completion_times, wait_times, turnaround_times
 
 def plot_gantt_chart(scheduler_type, start_times, data):
     burst_times = [x[2] for x in data]
