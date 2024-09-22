@@ -7,3 +7,5 @@ Currently supported algorithms:
 - SJF (Shortest Job First)
 - SRTF (Shortest Remaining Time First)
 - RR (Round Robin)
+
+- Live instance at https://huggingface.co/spaces/0xarnav/ProcessSchedulingSim
